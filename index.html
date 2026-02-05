@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TU - Thinking Upgrader | BCG Professional Edition</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:wght@300;400;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bcg-green: #173728;
+            --bcg-gold: #BFA15F;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1, h2, h3, h4, h5, h6, .brand-font {
+            font-family: 'Merriweather', 'Noto Serif TC', serif;
+        }
+
+        /* 3D Flip Card */
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #BFA15F; }
+    </style>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bcg: {
+                            green: '#173728',     // Deep Green
+                            light: '#2D8A6D',     // Accent Green
+                            gold: '#BFA15F',      // Gold
+                            dark: '#121212',      // Dark Bg
+                            card: '#1E1E1E',      // Dark Card
+                            charcoal: '#2D2D2D',  // Light Mode Text
+                            gray: '#F3F4F6'       // Light Mode Bg
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bcg-gray text-bcg-charcoal dark:bg-bcg-dark dark:text-gray-100 flex flex-col min-h-screen">
+    <div id="root" class="flex-grow flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icons (SVG) ---
+        const Icon = ({ path, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+
+        const Icons = {
+            Menu: (props) => <Icon {...props} path={<><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></>} />,
+            X: (props) => <Icon {...props} path={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>} />,
+            Globe: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>} />,
+            Moon: (props) => <Icon {...props} path={<><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></>} />,
+            Sun: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>} />,
+            Volume2: (props) => <Icon {...props} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>} />,
+            RotateCw: (props) => <Icon {...props} path={<><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></>} />,
+            CheckCircle: (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
+            XCircle: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>} />,
+            Brain: (props) => <Icon {...props} path={<><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></>} />,
+            Search: (props) => <Icon {...props} path={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>} />,
+            GitBranch: (props) => <Icon {...props} path={<><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></>} />,
+            FlaskConical: (props) => <Icon {...props} path={<><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><line x1="8.5" y1="2" x2="15.5" y2="2"/><line x1="8.5" y1="14" x2="15.5" y2="14"/></>} />,
+            Target: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>} />,
+            LayoutDashboard: (props) => <Icon {...props} path={<><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></>} />,
+            FileText: (props) => <Icon {...props} path={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></>} />,
+            ExternalLink: (props) => <Icon {...props} path={<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></>} />
+        };
+
+        // --- Data Content ---
+        const content = {
+            en: {
+                nav: {
+                    intro: "Introduction",
+                    ch1: "1. Observation",
+                    ch2: "2. Logic",
+                    ch3: "3. Research",
+                    ch4: "4. Analysis",
+                    ch5: "5. Hypothesis",
+                    ws_ex: "Ex: TSMC Case",
+                    ws_blank: "Worksheet (Blank)",
+                    dashboard: "Dashboard"
+                },
+                brand: "TU - Thinking Upgrader",
+                subtitle: "5 Secrets to Observation, Analysis, and Argumentation",
+                intro: {
+                    title: "Thinking Upgrader",
+                    subtitle: "Upgrade from 'Seeing' to 'Thinking'",
+                    desc: "A systematic training guide for students to master critical thinking. We guide you through 5 key steps: from basic observation to logical deduction, analysis, and constructing hypothesis with evidence.",
+                    mapTitle: "5-Step Thinking Map",
+                    steps: [
+                        {id: 1, text: "Observation: Distinguish Facts from Opinions"},
+                        {id: 2, text: "Logic: Abduction, Induction, Deduction"},
+                        {id: 3, text: "Research: Quantitative vs. Qualitative"},
+                        {id: 4, text: "Analysis: Separate, Diagnose, Integrate"},
+                        {id: 5, text: "Hypothesis: Variable Modeling & Verification"}
+                    ]
+                },
+                chapters: [
+                    {
+                        id: "ch1", title: "Ch1: Observation", subtitle: "Separate Facts from Opinions", icon: Icons.Target,
+                        coreConcept: "The foundation of critical thinking is the rigorous distinction between 'Facts' and 'Opinions'. Facts are objective data captured by our senses (like a camera recording or a thermometer reading). Opinions are the brain's subjective, emotional interpretations of that data. To observe effectively, we must 'remove our filters' and use structured tools like ORID (Objective, Reflective, Interpretive, Decisional) to layer our thinking process. This prevents bias from clouding our judgment before analysis begins. True observation requires seeing the context without jumping to conclusions.",
+                        glossary: [
+                            {term: "Fact", def: "Objective reality. Observable, measurable data that can be verified by others (e.g., 'Revenue dropped 5%')."},
+                            {term: "Opinion", def: "Subjective interpretation. Personal feelings, judgments, or adjectives applied to facts (e.g., 'Business is terrible')."},
+                            {term: "ORID", def: "A focused conversation method guiding thinking from Data (Objective) to Reaction (Reflective), Meaning (Interpretive), and Action (Decisional)."},
+                            {term: "3W1H", def: "A comprehensive scanning tool: What (Objects/Events), Why (Reasons), Context (Who/When/Where), and How (Mechanism)."}
+                        ],
+                        caseStudy: {
+                            title: "Case: The Coffee War",
+                            desc: "An untrained observer says: 'This coffee tastes bad, the staff is grumpy, no wonder no one buys it.' This mixes subjective feelings with assumptions. A trained observer records: 'Between 8:00-9:00 AM, 50 people entered, but only 3 bought coffee. Customers checked their watches frequently while waiting.' The Finding: The issue might be process efficiency (speed), not product quality (taste).",
+                            quiz: [
+                                { q: "Which of the following statements represents a FACT?", opts: ["The clerk looks very lazy today.", "The coffee machine takes exactly 3 minutes to brew one cup.", "Customers seem annoyed by the long wait.", "This store has a terrible atmosphere."], ans: 1, exp: "A fact must be measurable or observable data. '3 minutes' is a specific measurement. Lazy, annoyed, and terrible are subjective interpretations." },
+                                { q: "In the ORID framework, 'I feel frustrated waiting' belongs to which level?", opts: ["Objective", "Reflective", "Interpretive", "Decisional"], ans: 1, exp: "Reflective deals with emotional responses and feelings." }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch2", title: "Ch2: Logic", subtitle: "Connecting Phenomena with Causes", icon: Icons.GitBranch,
+                        coreConcept: "Logic bridges our internal understanding (Epistemology) with the external world (Ontology). It isn't just about 'making sense'; it's about correctly linking Causes, Rules, and Results. We utilize three distinct logic engines: Abduction (the detective's tool to guess causes from results), Induction (the scientist's tool to find patterns from cases), and Deduction (the strategist's tool to predict results from rules). Mastery involves knowing which engine to use at which stage of your inquiry.",
+                        glossary: [
+                            {term: "Abduction", def: "Inference to the best explanation. Guessing the most likely cause from an observed result. (Result + Rule → Cause)"},
+                            {term: "Induction", def: "Generalization. Deriving a general rule from specific repeated observations. (Case A + Case B → Rule)"},
+                            {term: "Deduction", def: "Prediction. Deriving a specific necessary conclusion from a general rule. (Rule + Cause → Result)"},
+                            {term: "Epistemology", def: "The theory of knowledge. How our brains process information and justify belief."}
+                        ],
+                        caseStudy: {
+                            title: "Case: Smartphone Sales Drop",
+                            desc: "Scenario: Sales dropped 40% (Result). 1. Abduction (Guessing): Marketing suggests 'Price is too high'. 2. Induction (Pattern Finding): Analysis of 5 years of data shows 'Phones over $1000 without trade-in deals always fail'. 3. Deduction (Prediction): 'If we launch a trade-in program (Cause) + Rule, sales will recover (Result)'.",
+                            quiz: [
+                                { q: "You see the ground is wet (Result) and know 'Rain makes ground wet' (Rule). You guess 'It rained' (Cause). What logic is this?", opts: ["Deduction", "Induction", "Abduction", "Reduction"], ans: 2, exp: "Abduction is reasoning backward from an effect (wet ground) to a probable cause (rain). It is probabilistic, not certain." },
+                                { q: "All men are mortal. Socrates is a man. Therefore, Socrates is mortal. This is:", opts: ["Abduction", "Induction", "Deduction", "Observation"], ans: 2, exp: "Deduction applies a general rule to a specific case to get a certain result." }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch3", title: "Ch3: Research", subtitle: "Choosing the Right Method", icon: Icons.Search,
+                        coreConcept: "Research is literally 'Re-searching'—the iterative process of seeking truth to resolve curiosity or confusion. There is no single 'best' method; there is only the right tool for the job. Quantitative research acts like a ruler, measuring the world (height, weight, causality) for generalization. Qualitative research acts like a novel, interpreting the world (context, pain points) to make invisible meanings visible, like understanding the suffering of the 'Little Match Girl' rather than just counting her matches.",
+                        glossary: [
+                            {term: "Re-search", def: "The systematic, iterative process of investigating a problem to construct new knowledge."},
+                            {term: "Quantitative", def: "Focuses on numbers, measurement, statistics, and causal strength. Used to verify hypotheses."},
+                            {term: "Qualitative", def: "Focuses on words, meaning, context, and interpretation. Used to explore new phenomena."},
+                            {term: "Context", def: "The specific circumstances (Who, When, Where, Cultural background) that give meaning to an event."}
+                        ],
+                        caseStudy: {
+                            title: "Case: Netflix Strategy",
+                            desc: "Netflix uses Quantitative Big Data to know exactly *when* you pause a movie or abandon a series. However, numbers can't tell them *why*. They must use Qualitative Focus Groups to understand that viewers disconnected because a character lacked emotional depth. A complete strategy requires both: Numbers for the 'What', Stories for the 'Why'.",
+                            quiz: [
+                                { q: "If you want to understand 'Why users feel frustrated with the new interface' deeply, which method is best?", opts: ["Quantitative (Survey 10,000 people with Yes/No questions)", "Qualitative (In-depth User Interviews)", "Deduction", "Abduction"], ans: 1, exp: "Qualitative research excels at exploring 'Why' questions, revealing the user's context, emotions, and specific pain points." },
+                                { q: "Which method is best for testing if 'A causes B' across a large population?", opts: ["Quantitative", "Qualitative", "Observation", "None"], ans: 0, exp: "Quantitative uses statistics to measure causal strength and generalize results." }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch4", title: "Ch4: Analysis", subtitle: "Dialectics for Insight", icon: Icons.Brain,
+                        coreConcept: "Analysis is the art of breaking things down (Separate), examining relationships (Diagnose), and rebuilding them (Integrate). True insight doesn't come from echoing one side; it comes from resolving contradictions. We use Dialectic Logic: identifying a Thesis (the status quo) and an Anti-thesis (the opposing force), then merging them into a Synthesis. This Synthesis is not a compromise; it is a superior, higher-level solution that transcends the original conflict.",
+                        glossary: [
+                            {term: "Separate", def: "Deconstructing complex phenomena into smaller, manageable components for examination."},
+                            {term: "Thesis (正)", def: "The proposition. The mainstream view, current established practice, or the initial argument."},
+                            {term: "Anti-thesis (反)", def: "The negation. The opposing view, the contradiction, or the limitations of the thesis."},
+                            {term: "Synthesis (合)", def: "The resolution. A new, higher-level insight that resolves the conflict between thesis and anti-thesis."}
+                        ],
+                        caseStudy: {
+                            title: "Case: Toyota EV Strategy",
+                            desc: "Thesis: 'We must go 100% Electric (BEV) immediately for a green future.' Anti-thesis: 'Infrastructure is lacking globally, and electricity sources aren't always clean.' Synthesis: 'Multi-pathway Strategy.' The enemy is carbon, not the internal combustion engine. We will use Hybrids, Hydrogen, and EVs together to adapt to different market realities and reduce carbon most effectively.",
+                            quiz: [
+                                { q: "In Dialectic Logic (Hegel), what is 'Synthesis'?", opts: ["Finding the mathematical average between two options.", "Choosing the winner between A and B.", "A new perspective that resolves the contradiction of A and B.", "Ignoring the problem to maintain peace."], ans: 2, exp: "Synthesis creates a third way that preserves the truth of both sides while overcoming their limitations. It is evolution, not compromise." },
+                                { q: "What is the first step of Analysis?", opts: ["Integrate", "Diagnose", "Separate", "Guess"], ans: 2, exp: "Analysis starts with Separating (breaking down) the problem." }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch5", title: "Chapter 5: Hypothesis",
+                        subtitle: "Model Building & Verification",
+                        icon: Icons.FlaskConical,
+                        coreConcept: "To prove an argument, we must translate vague ideas into precise models. We use 'Variable Building Blocks' to construct a causal story. X (Cause) leads to Y (Effect). But how? Through Me (Mediator - the path/mechanism). And when? Depending on Mo (Moderator - the condition/context). A strong hypothesis clearly defines these variables, allowing us to verify the story through statistical data (Quantitative) or rigorous logic and authenticity (Qualitative).",
+                        glossary: [
+                            {term: "X (Cause)", def: "The independent variable. The factor that drives or influences the outcome."},
+                            {term: "Y (Effect)", def: "The dependent variable. The outcome or phenomenon we are trying to explain."},
+                            {term: "Me (Mediator)", def: "The mechanism. The 'Why'. X affects Y *through* Me. (e.g., Fire -> Heat -> Burn)."},
+                            {term: "Mo (Moderator)", def: "The condition. The 'When'. It strengthens or weakens the X-Y relationship. (e.g., Rain -> Wet, but Umbrella blocks it)."}
+                        ],
+                        caseStudy: {
+                            title: "Case: Influencer Marketing",
+                            desc: "Hypothesis: Influencers (X) increase Product Sales (Y). But why? Because they build Trust (Me) with the audience. However, this effect isn't constant. If the Product Price is too high (Mo), the influencer's recommendation power decreases. Model: X -> Me -> Y, moderated by Mo.",
+                            quiz: [
+                                { q: "In the model 'Influencer -> Trust -> Sales', what type of variable is 'Trust'?", opts: ["X (Independent Variable)", "Y (Dependent Variable)", "Mo (Moderator)", "Me (Mediator)"], ans: 3, exp: "Trust is the *pathway* or *mechanism* through which the Influencer affects Sales. Without Trust, the influence doesn't happen. It mediates the effect." },
+                                { q: "If 'Price' changes the strength of the relationship between Influencer and Sales, what is 'Price'?", opts: ["X", "Y", "Mo", "Me"], ans: 2, exp: "A Moderator (Mo) changes the strength or direction of a relationship." }
+                            ]
+                        }
+                    }
+                ],
+                worksheets: {
+                    exTitle: "Example: TSMC Arizona Case",
+                    blankTitle: "Worksheet (Blank)",
+                    s1: "1. Observation Lab (ORID/4F)",
+                    s2: "2. Logic & Insight Canvas",
+                    s3: "3. Research Blueprint (Model)",
+                    save: "Save Progress",
+                    saved: "Saved!",
+                    labels: { o: "Objective / Fact", r: "Reflective / Feeling", i: "Interpretive / Finding", d: "Decisional / Future", logic: "Logic Engines", thesis: "Thesis", anti: "Anti-thesis", synth: "Synthesis", model: "Variables (X, Y, Me, Mo)", verify: "Verification Plan" }
+                },
+                dashboard: {
+                    title: "Learning Dashboard",
+                    progress: "Overall Progress",
+                    badges: "Badges",
+                    history: "Quiz History",
+                    badgeList: ["Observer", "Logician", "Researcher", "Analyst", "Scientist"],
+                    score: "Score"
+                },
+                ui: {
+                    tryAgain: "Try Again",
+                    correct: "Correct!",
+                    incorrect: "Incorrect.",
+                    flipTip: "(Click to flip)",
+                    footerLeft: "v3.0 | 2026.02.05 | © Thinking Upgrader",
+                    footerRight: "Instructor: Prof. Shihmin Lo"
+                }
+            },
+            zh: {
+                nav: {
+                    intro: "簡介",
+                    ch1: "1. 觀察",
+                    ch2: "2. 邏輯",
+                    ch3: "3. 探究",
+                    ch4: "4. 分析",
+                    ch5: "5. 實證",
+                    ws_ex: "範例：台積電",
+                    ws_blank: "空白學習單",
+                    dashboard: "學習歷程"
+                },
+                brand: "TU - Thinking Upgrader",
+                subtitle: "觀察分析與論證五大祕訣",
+                intro: {
+                    title: "思維升級計畫",
+                    subtitle: "從「會看」到「會想」的思考升級戰",
+                    desc: "這是一套為大學生設計的系統化訓練。我們將透過五個步驟，從最基礎的明辨事實，到邏輯推演、深度分析，最後建構出假說與實證。",
+                    mapTitle: "五步驟思維地圖",
+                    steps: [
+                        {id: 1, text: "觀察 (Observation)：區分事實與觀點"},
+                        {id: 2, text: "邏輯 (Logic)：溯因、歸納、演繹"},
+                        {id: 3, text: "探究 (Research)：量化 vs. 質性"},
+                        {id: 4, text: "分析 (Analysis)：拆解、診斷、整合"},
+                        {id: 5, text: "實證 (Hypothesis)：變數模型與驗證"}
+                    ]
+                },
+                chapters: [
+                    {
+                        id: "ch1", title: "第一章：觀察", subtitle: "拆分事實與觀點", icon: Icons.Target,
+                        coreConcept: "批判性思考的基石在於嚴格區分客觀的「事實」與主觀的「觀點」。事實是感官接收到的原始數據（如攝影機畫面）；觀點是大腦的情緒解讀。為了有效觀察，必須「拿掉濾鏡」，並使用 ORID（客觀、反應、詮釋、決定）將思考分層，避免偏見。真正的觀察需要看見事物的本質與脈絡，而不僅僅是表象。",
+                        glossary: [
+                            {term: "Fact (事實)", def: "客觀現實。可測量、驗證的數據（例：營收下降5%）。"},
+                            {term: "Opinion (觀點)", def: "主觀解讀。感受或判斷（例：生意很差）。"},
+                            {term: "ORID", def: "焦點討論法。從數據到行動的思考引導框架。"},
+                            {term: "3W1H", def: "掃描工具：What, Why, Context, How。"}
+                        ],
+                        caseStudy: {
+                            title: "個案：咖啡戰",
+                            desc: "錯誤：咖啡難喝（觀點）。正確：8-9點進店50人僅3人買，顧客看手錶（事實）。洞察：問題是速度非口味。",
+                            quiz: [
+                                { q: "何者為事實？", opts: ["店員懶惰", "製作需3分鐘", "顧客厭煩", "氣氛差"], ans: 1, exp: "「3分鐘」是可測量數據。" },
+                                { q: "在 ORID 中，「我覺得很焦慮」屬於？", opts: ["客觀 (Objective)", "反應 (Reflective)", "詮釋 (Interpretive)", "決定 (Decisional)"], ans: 1, exp: "反應層次處理情緒與感覺。" }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch2", title: "第二章：邏輯", subtitle: "連結前因後果", icon: Icons.GitBranch,
+                        coreConcept: "邏輯是連結認知（知識論）與世界（本體論）的橋樑。它不僅是推論，更是正確串聯「因、規則、果」的過程。三大引擎：溯因（找原因-偵探）、歸納（找規律-科學家）、演繹（做預測-策略家）。精通邏輯即是知道何時用哪種引擎。",
+                        glossary: [
+                            {term: "Abduction (溯因)", def: "從結果推測原因。（果+規則->因）"},
+                            {term: "Induction (歸納)", def: "從案例找規律。（案例A+B->規則）"},
+                            {term: "Deduction (演繹)", def: "從規則預測結果。（規則+因->果）"},
+                            {term: "Epistemology (知識論)", def: "研究我們「如何知道」的學問。"}
+                        ],
+                        caseStudy: {
+                            title: "個案：手機滯銷",
+                            desc: "銷量跌（果）。溯因：定價太高？歸納：數據顯示高價無優惠必敗。演繹：推出優惠則銷量回升。",
+                            quiz: [
+                                { q: "地濕（果）+下雨地濕（規則）-> 下雨了（因）。是哪種邏輯？", opts: ["演繹", "歸納", "溯因", "簡化"], ans: 2, exp: "溯因是從結果回推原因。" },
+                                { q: "人皆會死。蘇格拉底是人。蘇格拉底會死。是哪種邏輯？", opts: ["演繹", "歸納", "溯因", "簡化"], ans: 0, exp: "演繹是從普遍規則推導必然結果。" }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch3", title: "第三章：探究", subtitle: "選擇研究方法", icon: Icons.Search,
+                        coreConcept: "研究是「反覆尋找 (Re-search)」真相。方法沒有優劣，只有適不適合。量化研究像尺，測量世界（身高、體重、因果強度）以求一般化；質性研究像小說，詮釋世界（脈絡、痛點），讓看不見的意義被看見（如賣火柴小女孩的痛苦）。",
+                        glossary: [
+                            {term: "Re-search", def: "反覆探索真相的過程。"},
+                            {term: "Quantitative (量化)", def: "數字、測量、一般化。"},
+                            {term: "Qualitative (質性)", def: "脈絡、詮釋、意義。"},
+                            {term: "Context (脈絡)", def: "賦予數據意義的情境。"}
+                        ],
+                        caseStudy: {
+                            title: "個案：Netflix",
+                            desc: "量化知道你在何時棄劇；質性訪談才知道「為什麼」（缺乏情感連結）。兩者皆必要。",
+                            quiz: [
+                                { q: "想了解「使用者為何感到挫折」，用什麼？", opts: ["量化問卷", "質性訪談", "演繹法", "溯因法"], ans: 1, exp: "質性擅長探索「為什麼」與深層情感。" },
+                                { q: "想知道「A 對 B 的影響有多大」，用什麼？", opts: ["量化研究", "質性研究", "觀察法", "無"], ans: 0, exp: "量化研究擅長測量因果強度與一般化。" }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch4", title: "第四章：分析", subtitle: "辯證產出洞見", icon: Icons.Brain,
+                        coreConcept: "分析 = 拆解 + 診斷 + 整合。洞見來自矛盾。使用辯證邏輯：正（主流）vs 反（對立）-> 合（綜合）。「合」不是妥協，而是解決矛盾的更高層次解方。真正的分析師不選邊站，而是尋找第三條路。",
+                        glossary: [
+                            {term: "Thesis (正)", def: "命題。主流觀點或現狀。"},
+                            {term: "Anti-thesis (反)", def: "反命題。對立觀點或缺陷。"},
+                            {term: "Synthesis (合)", def: "綜合命題。更高層次的新解方。"},
+                            {term: "Separate (拆解)", def: "將複雜現象拆解為元件。"}
+                        ],
+                        caseStudy: {
+                            title: "個案：Toyota 電動車",
+                            desc: "正：全面純電。反：缺電缺基建。合：多元路徑（油電/氫能/純電）。敵人是碳不是引擎。",
+                            quiz: [
+                                { q: "辯證邏輯中的「合」是什麼？", opts: ["平均值", "選贏家", "解決矛盾的新觀點", "忽略問題"], ans: 2, exp: "合是整合雙方真理的進化觀點。" },
+                                { q: "分析的第一步是什麼？", opts: ["整合", "診斷", "拆解", "猜測"], ans: 2, exp: "分析 (Analyze) 始於拆解 (Separate)。" }
+                            ]
+                        }
+                    },
+                    {
+                        id: "ch5", title: "第五章：實證", subtitle: "模型與驗證", icon: Icons.FlaskConical,
+                        coreConcept: "用「變數積木」建立模型：X（因）導致 Y（果）。路徑是 Me（中介）。條件是 Mo（干擾）。透過數據（量化）或邏輯真實度（質性）來驗證。強大的論證必須建立在清晰的變數關係之上。",
+                        glossary: [
+                            {term: "X (因)", def: "解釋變數。"},
+                            {term: "Y (果)", def: "被解釋變數。"},
+                            {term: "Me (中介變數)", def: "過程/路徑 (Why)。"},
+                            {term: "Mo (干擾變數)", def: "條件/情境 (When)。"}
+                        ],
+                        caseStudy: {
+                            title: "個案：網紅行銷",
+                            desc: "網紅 (X) -> 信任 (Me) -> 銷量 (Y)。若價格高 (Mo) 則無效。",
+                            quiz: [
+                                { q: "網紅 -> 信任 -> 銷量。信任是什麼？", opts: ["X", "Y", "Mo", "Me"], ans: 3, exp: "信任是影響傳遞的路徑，即中介變數。" },
+                                { q: "若「價格」會改變網紅對銷量的影響力，價格是什麼？", opts: ["X", "Y", "Mo", "Me"], ans: 2, exp: "干擾變數 (Mo) 會改變因果關係的強弱。" }
+                            ]
+                        }
+                    }
+                ],
+                worksheets: {
+                    exTitle: "範例：台積電美國廠個案",
+                    blankTitle: "自主學習單 (空白)",
+                    s1: "1. 觀察力實驗室 (ORID/4F)",
+                    s2: "2. 邏輯與洞察畫布",
+                    s3: "3. 研究架構設計 (X-Y模型)",
+                    save: "暫存進度",
+                    saved: "已儲存！",
+                    labels: { o: "Objective / 事實", r: "Reflective / 感受", i: "Interpretive / 發現", d: "Decisional / 未來", logic: "邏輯推演", thesis: "正方觀點", anti: "反方觀點", synth: "綜合洞察", model: "變數模型 (X, Y, Me, Mo)", verify: "驗證計畫" }
+                },
+                dashboard: {
+                    title: "學習歷程儀表板",
+                    progress: "整體完成度",
+                    badges: "成就徽章",
+                    history: "測驗紀錄",
+                    badgeList: ["觀察新手", "邏輯偵探", "探究者", "分析師", "科學家"],
+                    score: "得分"
+                },
+                ui: {
+                    tryAgain: "再試一次",
+                    correct: "答對了！",
+                    incorrect: "答錯了。",
+                    flipTip: "(點擊翻轉)",
+                    footerLeft: "v3.0 | 2026.02.05 | © Thinking Upgrader",
+                    footerRight: "指導教授：Prof. Shihmin Lo"
+                }
+            }
+        };
+
+        const tsmcData = {
+            o: "1. 財報顯示美國廠成本高4倍。 2. 工會抗議引進台勞。 3. Glassdoor 出現工程師抱怨軍事化管理。",
+            r: "覺得混亂與擔憂，擔心文化衝突導致建廠失敗。",
+            i: "不只是技術問題，更是深層的「工作文化」與「管理制度」衝突。",
+            d: "建議研究重點放在「跨文化管理」與「在地化策略」的調整。",
+            logic: "溯因：進度落後可能是因為「台灣責任制」在美國水土不服。歸納：比較美日設廠差異，發現「文化距離」是關鍵變數。",
+            thesis: "全球布局派：必須去美國（避險）。",
+            anti: "成本效率派：不該去美國（成本高、無供應鏈）。",
+            synth: "雙軌策略：美國廠定位為「高溢價服務中心」（避險），台灣廠保留為「高效率量產基地」。",
+            model: "X(跨文化適應) -> Me(組織認同) -> Y(營運績效)；Mo(地緣政治壓力)",
+            verify: "質性研究。訪談派駐工程師，比較混合管理模式與傳統模式的部門績效。"
+        };
+
+        // --- Components ---
+
+        const FlipCard = ({ term, def, tip }) => {
+            const [flipped, setFlipped] = useState(false);
+            return (
+                <div className="group h-48 w-full cursor-pointer perspective-1000" onClick={() => setFlipped(!flipped)}>
+                    <div className={`relative h-full w-full transition-transform duration-500 transform-style-3d ${flipped ? 'rotate-y-180' : ''}`}>
+                        <div className="absolute inset-0 h-full w-full rounded-xl bg-white dark:bg-bcg-card border border-bcg-light/20 p-6 flex flex-col items-center justify-center shadow-lg backface-hidden">
+                            <h4 className="text-xl font-bold text-bcg-green dark:text-bcg-gold text-center mb-2 brand-font">{term}</h4>
+                            <p className="text-xs text-gray-500 mt-2">{tip}</p>
+                        </div>
+                        <div className="absolute inset-0 h-full w-full rounded-xl bg-bcg-green border border-bcg-gold p-6 flex items-center justify-center shadow-lg rotate-y-180 backface-hidden">
+                            <p className="text-sm text-gray-100 text-center leading-relaxed font-medium">{def}</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Quiz = ({ questions, ui, onComplete, id }) => {
+            const [currentQ, setCurrentQ] = useState(0);
+            const [status, setStatus] = useState('idle'); // idle, correct, incorrect
+            const [score, setScore] = useState(0);
+            const [finished, setFinished] = useState(false);
+
+            useEffect(() => {
+                setCurrentQ(0); setStatus('idle'); setScore(0); setFinished(false);
+            }, [questions]);
+
+            const handleSelect = (idx) => {
+                if (status === 'correct') return;
+                const isCorrect = idx === questions[currentQ].ans;
+                if (isCorrect) {
+                    setStatus('correct');
+                    setScore(s => s + 1);
+                } else {
+                    setStatus('incorrect');
+                }
+            };
+
+            const nextQ = () => {
+                if (currentQ < questions.length - 1) {
+                    setCurrentQ(currentQ + 1);
+                    setStatus('idle');
+                } else {
+                    setFinished(true);
+                    onComplete(id, score + (status === 'correct' ? 0 : 0)); // simple completion logic
+                }
+            };
+
+            const retry = () => setStatus('idle');
+
+            if (finished) return <div className="p-6 bg-bcg-green/20 rounded-lg text-center font-bold">Quiz Completed! Score: {score}/{questions.length}</div>;
+
+            const q = questions[currentQ];
+
+            return (
+                <div className="mt-6 bg-gray-100 dark:bg-bcg-dark/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h5 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+                        <Icons.Brain className="mr-2 text-bcg-green dark:text-bcg-gold" /> Quiz {currentQ + 1}/{questions.length}
+                    </h5>
+                    <p className="text-gray-700 dark:text-gray-300 mb-4 font-medium">{q.q}</p>
+                    <div className="space-y-2">
+                        {q.opts.map((opt, idx) => {
+                            let style = "w-full text-left p-3 rounded border transition-all duration-200 ";
+                            if (status === 'idle') style += "border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700";
+                            else if (status === 'correct' && idx === q.ans) style += "bg-green-100 dark:bg-green-900/40 border-green-500 text-green-800 dark:text-green-100";
+                            else if (status === 'incorrect' && idx !== q.ans) style += "opacity-50 border-gray-300 dark:border-gray-700"; // Fade others
+                            else if (status === 'incorrect' && idx === q.ans) style += "opacity-50 border-gray-300 dark:border-gray-700"; // Keep correct hidden? No, standard quiz usually shows result.
+                            
+                            // User selected incorrect
+                            if (status === 'incorrect' && idx !== q.ans && document.activeElement.innerText === opt) {
+                                style = "w-full text-left p-3 rounded border bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-100";
+                            }
+
+                            return <button key={idx} onClick={() => handleSelect(idx)} className={style} disabled={status === 'correct'}>{opt}</button>;
+                        })}
+                    </div>
+                    {status !== 'idle' && (
+                        <div className={`mt-4 p-4 rounded ${status === 'correct' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-600' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-600'}`}>
+                            <div className="flex items-center mb-2 font-bold">
+                                {status === 'correct' ? <span className="text-green-600 dark:text-green-400 flex items-center"><Icons.CheckCircle className="mr-2"/> {ui.correct}</span> : <span className="text-red-600 dark:text-red-400 flex items-center"><Icons.XCircle className="mr-2"/> {ui.incorrect}</span>}
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{q.exp}</p>
+                            <div className="mt-4 flex gap-2">
+                                {status === 'incorrect' && <button onClick={retry} className="px-3 py-1 text-xs rounded border border-bcg-green dark:border-bcg-gold text-bcg-green dark:text-bcg-gold hover:bg-bcg-green/10">{ui.tryAgain}</button>}
+                                {status === 'correct' && <button onClick={nextQ} className="px-3 py-1 text-xs rounded bg-bcg-green dark:bg-bcg-gold text-white dark:text-bcg-dark font-bold">Next</button>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const TextToSpeech = ({ text, lang }) => {
+            const [speaking, setSpeaking] = useState(false);
+            const speak = () => {
+                if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return; }
+                const u = new SpeechSynthesisUtterance(text);
+                const vs = window.speechSynthesis.getVoices();
+                let v = null;
+                if (lang === 'en') v = vs.find(x => x.name.includes('Great Britain') || x.name.includes('UK') && x.name.includes('Male')) || vs.find(x => x.lang === 'en-GB');
+                else v = vs.find(x => x.name.includes('Yating') || x.name.includes('雅婷')) || vs.find(x => x.lang === 'zh-TW');
+                if (v) u.voice = v;
+                u.onend = () => setSpeaking(false);
+                setSpeaking(true);
+                window.speechSynthesis.speak(u);
+            };
+            return (
+                <button onClick={speak} className={`ml-3 p-2 rounded-full transition-all ${speaking ? 'bg-bcg-gold text-bcg-dark animate-pulse' : 'bg-bcg-light text-white hover:bg-bcg-gold hover:text-bcg-dark'}`} title="TTS">
+                    <Icons.Volume2 size={16} />
+                </button>
+            );
+        };
+
+        // --- Main Views ---
+
+        const IntroView = ({ content }) => (
+            <div className="max-w-4xl mx-auto space-y-12 animate-fade-in py-10">
+                <div className="text-center space-y-6">
+                    <h1 className="text-4xl md:text-6xl font-bold brand-font text-bcg-green dark:text-white">{content.title}</h1>
+                    <p className="text-xl text-gray-600 dark:text-bcg-gold font-serif italic">{content.subtitle}</p>
+                    <p className="text-lg text-gray-700 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">{content.desc}</p>
+                </div>
+                <div className="bg-white dark:bg-bcg-card p-8 rounded-xl shadow-lg border-t-4 border-bcg-gold">
+                    <h3 className="text-2xl font-bold text-center mb-8 text-gray-800 dark:text-white brand-font">{content.mapTitle}</h3>
+                    <div className="space-y-4">
+                        {content.steps.map(s => (
+                            <div key={s.id} className="flex items-center p-4 bg-gray-50 dark:bg-bcg-dark rounded-lg border border-gray-200 dark:border-gray-700 hover:border-bcg-gold transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-bcg-green text-bcg-gold flex items-center justify-center font-bold text-lg mr-4 shadow">{s.id}</div>
+                                <span className="text-lg font-medium text-gray-800 dark:text-gray-200">{s.text}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ChapterView = ({ ch, ui, onQuizComplete }) => (
+            <div className="max-w-6xl mx-auto py-6 animate-fade-in">
+                <div className="mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center space-x-4 mb-2">
+                        <div className="p-3 bg-bcg-green text-bcg-gold rounded-full shadow-lg"><ch.icon size={32}/></div>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white brand-font">{ch.title}</h2>
+                    </div>
+                    <h3 className="text-xl text-bcg-light dark:text-bcg-gold ml-16">{ch.subtitle}</h3>
+                </div>
+
+                <div className="grid lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-7 space-y-8">
+                        <div className="bg-white dark:bg-bcg-card p-6 rounded-lg border-l-4 border-bcg-gold shadow-md">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center">
+                                    <Icons.Brain className="mr-2 text-bcg-green dark:text-bcg-gold" size={20}/> CORE CONCEPT
+                                </h4>
+                                <TextToSpeech text={ch.coreConcept} />
+                            </div>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-justify text-lg">{ch.coreConcept}</p>
+                        </div>
+                        <div>
+                            <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+                                <Icons.Search className="mr-2 text-bcg-green dark:text-bcg-gold" size={20}/> KEY TERMS
+                            </h4>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {ch.glossary.map((g, i) => <FlipCard key={i} term={g.term} def={g.def} tip={ui.flipTip} />)}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="lg:col-span-5">
+                        <div className="bg-white dark:bg-bcg-card rounded-xl shadow-md border border-gray-200 dark:border-gray-700 h-full p-6">
+                            <h4 className="text-lg font-bold text-bcg-green dark:text-bcg-gold mb-6 flex items-center brand-font border-b border-gray-200 dark:border-gray-700 pb-2">
+                                <Icons.FlaskConical className="mr-2"/> CASE STUDY
+                            </h4>
+                            <h5 className="font-bold text-gray-900 dark:text-white mb-2 text-lg">{ch.caseStudy.title}</h5>
+                            <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">{ch.caseStudy.desc}</p>
+                            <Quiz questions={ch.caseStudy.quiz} ui={ui} onComplete={onQuizComplete} id={ch.id} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const WorksheetView = ({ data, isBlank, labels }) => {
+            const [inputs, setInputs] = useState(data || {});
+            const handleChange = (k, v) => setInputs({...inputs, [k]: v});
+            
+            return (
+                <div className="max-w-4xl mx-auto py-10 animate-fade-in space-y-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-3xl font-bold brand-font text-gray-900 dark:text-white">{isBlank ? labels.blankTitle : labels.exTitle}</h2>
+                        {isBlank && <button className="bg-bcg-gold text-bcg-dark px-4 py-2 rounded font-bold shadow hover:bg-yellow-400 transition-colors" onClick={()=>alert(labels.saved)}>{labels.save}</button>}
+                    </div>
+
+                    {[
+                        {title: labels.s1, keys: ['o','r','i','d']},
+                        {title: labels.s2, keys: ['logic','thesis','anti','synth']},
+                        {title: labels.s3, keys: ['model','verify']}
+                    ].map((sec, i) => (
+                        <div key={i} className="bg-white dark:bg-bcg-card p-8 rounded-xl shadow-lg border-t-4 border-bcg-green">
+                            <h3 className="text-xl font-bold mb-6 text-bcg-green dark:text-bcg-gold">{sec.title}</h3>
+                            <div className="space-y-4">
+                                {sec.keys.map(k => (
+                                    <div key={k}>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{labels.labels[k] || k.toUpperCase()}</label>
+                                        {isBlank ? (
+                                            <textarea 
+                                                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-bcg-dark text-gray-900 dark:text-white focus:ring-2 focus:ring-bcg-gold outline-none" 
+                                                rows="3"
+                                                value={inputs[k]||''}
+                                                onChange={(e)=>handleChange(k, e.target.value)}
+                                            />
+                                        ) : (
+                                            <div className="p-4 bg-gray-50 dark:bg-bcg-dark/50 rounded border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-serif">
+                                                {inputs[k]}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const Dashboard = ({ scores, c }) => {
+            const completedCount = Object.values(scores).filter(v => v).length;
+            const progress = (completedCount / 5) * 100;
+            
+            return (
+                <div className="max-w-4xl mx-auto py-10 animate-fade-in">
+                    <h2 className="text-3xl font-bold brand-font text-gray-900 dark:text-white mb-10">{c.title}</h2>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        <div className="bg-white dark:bg-bcg-card p-8 rounded-xl shadow-md flex flex-col items-center justify-center text-center col-span-1">
+                            <div className="relative w-32 h-32 mb-4 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
+                                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200 dark:text-gray-700" />
+                                    <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-bcg-gold" strokeDasharray={351} strokeDashoffset={351 - (351 * progress) / 100} />
+                                </svg>
+                                <span className="absolute text-2xl font-bold text-gray-800 dark:text-white">{progress}%</span>
+                            </div>
+                            <h3 className="font-bold text-gray-600 dark:text-gray-400">{c.progress}</h3>
+                        </div>
+                        <div className="bg-white dark:bg-bcg-card p-8 rounded-xl shadow-md col-span-2">
+                            <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center"><Icons.LayoutDashboard className="mr-2"/> {c.badges}</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                {c.badgeList.map((b, i) => (
+                                    <div key={i} className={`p-3 rounded border text-center transition-all ${scores[`ch${i+1}`] ? 'bg-bcg-green/10 border-bcg-gold text-bcg-green dark:text-bcg-gold' : 'bg-gray-50 dark:bg-bcg-dark border-gray-200 dark:border-gray-700 text-gray-400 opacity-50'}`}>
+                                        <div className="text-xl mb-1">🏆</div>
+                                        <div className="text-xs font-bold">{b}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [lang, setLang] = useState('en');
+            const [theme, setTheme] = useState('dark');
+            const [view, setView] = useState('intro');
+            const [menuOpen, setMenuOpen] = useState(false);
+            const [scores, setScores] = useState({});
+
+            const c = content[lang];
+
+            useEffect(() => {
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }, [theme]);
+
+            const handleQuizComplete = (id, success) => {
+                if (success) setScores(prev => ({...prev, [id]: true}));
+            };
+
+            const switchView = (id) => {
+                setView(id);
+                setMenuOpen(false);
+                window.scrollTo(0, 0);
+            };
+
+            const NavItem = ({ id, label }) => (
+                <button onClick={() => switchView(id)} className={`block w-full text-left px-6 py-3 font-bold brand-font transition-colors ${view === id ? 'text-bcg-green dark:text-bcg-gold bg-gray-100 dark:bg-white/5 border-l-4 border-bcg-green dark:border-bcg-gold' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+                    {label}
+                </button>
+            );
+
+            return (
+                <div className="flex flex-col min-h-screen">
+                    <header className="fixed top-0 w-full z-50 bg-white/95 dark:bg-bcg-dark/95 backdrop-blur shadow border-b border-gray-200 dark:border-gray-800 h-16 flex items-center px-4 lg:px-8 justify-between">
+                        <div className="flex items-center">
+                            <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 mr-4 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-white transition-colors">
+                                {menuOpen ? <Icons.X /> : <Icons.Menu />}
+                            </button>
+                            <div className="cursor-pointer" onClick={() => switchView('intro')}>
+                                <h1 className="text-xl font-bold brand-font text-bcg-green dark:text-white tracking-wide hover:text-bcg-gold transition-colors">{c.brand}</h1>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} className="flex items-center px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-xs font-bold text-gray-600 dark:text-gray-300 hover:border-bcg-gold hover:text-bcg-green dark:hover:text-bcg-gold transition-all">
+                                <Icons.Globe size={14} className="mr-1"/> {lang === 'en' ? '繁中' : 'ENG'}
+                            </button>
+                            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-bcg-gold transition-colors">
+                                {theme === 'dark' ? <Icons.Sun size={20}/> : <Icons.Moon size={20}/>}
+                            </button>
+                        </div>
+                    </header>
+
+                    {menuOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMenuOpen(false)} />}
+                    
+                    <aside className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-bcg-card border-r border-gray-200 dark:border-gray-800 z-40 transform transition-transform duration-300 ease-in-out overflow-y-auto ${menuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static lg:h-auto lg:w-64 lg:block hidden'}`}>
+                        <div className="py-6 space-y-1">
+                            <NavItem id="intro" label={c.nav.intro} />
+                            <div className="px-6 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider mt-4">Chapters</div>
+                            {['ch1','ch2','ch3','ch4','ch5'].map(id => <NavItem key={id} id={id} label={c.nav[id]} />)}
+                            <div className="px-6 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider mt-4">Tools</div>
+                            <NavItem id="ws_ex" label={c.nav.ws_ex} />
+                            <NavItem id="ws_blank" label={c.nav.ws_blank} />
+                            <NavItem id="dash" label={c.nav.dashboard} />
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 pt-20 px-4 md:px-8 pb-20 overflow-y-auto">
+                        {view === 'intro' && <IntroView content={c.intro} />}
+                        {view.startsWith('ch') && <ChapterView ch={c.chapters.find(x => x.id === view)} ui={c.ui} onQuizComplete={handleQuizComplete} />}
+                        {view === 'ws_ex' && <WorksheetView data={tsmcData} isBlank={false} labels={c.worksheets} />}
+                        {view === 'ws_blank' && <WorksheetView data={{}} isBlank={true} labels={c.worksheets} />}
+                        {view === 'dash' && <Dashboard scores={scores} c={c.dashboard} />}
+                    </main>
+
+                    <footer className="bg-white dark:bg-bcg-dark border-t border-gray-200 dark:border-gray-800 py-6 px-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 z-10">
+                        <div>{c.ui.footerLeft}</div>
+                        <div>{c.ui.footerRight} <a href="https://www.ibs.ncnu.edu.tw/index.php/faculty/tenured-professor/299-smlo" target="_blank" className="text-bcg-green dark:text-bcg-gold hover:underline ml-1"><Icons.ExternalLink size={12} className="inline"/></a></div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -659,25 +659,35 @@ const ModuleQuiz = ({ questions, t, moduleId, onQuizSubmit, moduleName }) => {
   const isGrpSub = !!submitted[groupIdx];
 
   const handleGroupSubmit = () => {
-    const correct = currentIndices.reduce((acc,qi,i)=>{
-      const selOrig = shuffledMaps[qi]?.[selected[currentStart+i]];
-      return acc + (selOrig===_d(questions[qi].ans)?1:0);
-    },0);
-    const total = currentIndices.length;
     const wrongQs = currentIndices.filter((qi,i)=>{
       const selOrig = shuffledMaps[qi]?.[selected[currentStart+i]];
       return selOrig!==_d(questions[qi].ans);
     }).map(qi=>questions[qi].q);
-    setSubmitted(s=>({...s,[groupIdx]:true}));
-    const allCorrect = questions.reduce((a,_,qi)=>{
-      const grp = Math.floor(qOrder.indexOf(qi)/groupSize);
-      if(!submitted[grp]&&grp!==groupIdx) return a;
-      const localI = currentIndices.indexOf(qi);
-      if(localI<0) return a;
-      const selOrig = shuffledMaps[qi]?.[selected[currentStart+localI]];
-      return a+(selOrig===_d(questions[qi].ans)?1:0);
-    },correct);
-    if(onQuizSubmit) onQuizSubmit(moduleId, correct, total, wrongQs, moduleName);
+    const newSubmitted = {...submitted, [groupIdx]:true};
+    setSubmitted(newSubmitted);
+
+    // 累計所有已提交組別（含本次）的答對數、已答數、錯題
+    const cumulativeCorrect = qOrder.reduce((acc, qi, flatI) => {
+      const grp = Math.floor(flatI / groupSize);
+      if (!newSubmitted[grp]) return acc;
+      const localI = flatI - grp * groupSize;
+      const selOrig = shuffledMaps[qi]?.[selected[grp * groupSize + localI]];
+      return acc + (selOrig === _d(questions[qi].ans) ? 1 : 0);
+    }, 0);
+    const cumulativeAnswered = qOrder.reduce((acc, qi, flatI) => {
+      const grp = Math.floor(flatI / groupSize);
+      return newSubmitted[grp] ? acc + 1 : acc;
+    }, 0);
+    const allWrongQs = qOrder.reduce((acc, qi, flatI) => {
+      const grp = Math.floor(flatI / groupSize);
+      if (!newSubmitted[grp]) return acc;
+      const localI = flatI - grp * groupSize;
+      const selOrig = shuffledMaps[qi]?.[selected[grp * groupSize + localI]];
+      if (selOrig !== _d(questions[qi].ans)) acc.push(questions[qi].q);
+      return acc;
+    }, []);
+
+    if(onQuizSubmit) onQuizSubmit(moduleId, cumulativeCorrect, cumulativeAnswered, questions.length, allWrongQs, moduleName);
   };
 
   // 累計所有已提交組別的答對數與已答數
@@ -993,7 +1003,7 @@ function App() {
   const [studentInfo, setStudentInfo] = useState(()=>loadLS(LS_STU,{group:'',dept:'',id:'',nameEn:'',nameZh:''}));
   const [analytics, setAnalytics] = useState(()=>loadLS(LS_KEY,{
     time:Array(TOTAL).fill(0), clicks:Array(TOTAL).fill(0),
-    quizCorrect:Array(TOTAL).fill(0), quizTotal:Array(TOTAL).fill(0),
+    quizCorrect:Array(TOTAL).fill(0), quizTotal:Array(TOTAL).fill(0), quizAnswered:Array(TOTAL).fill(0),
     cardsRead:Array(TOTAL).fill(0), cardsTotal:Array(TOTAL).fill(0),
     wrongTopics:{}, visited:Array(TOTAL).fill(false)
   }));
@@ -1029,12 +1039,12 @@ function App() {
     return ()=>document.removeEventListener('mousedown',handleOut);
   },[]);
 
-  const handleQuizSubmit = (mid,correct,total,wrongQs) => {
+  const handleQuizSubmit = (mid,correct,answered,totalQs,wrongQs) => {
     setAnalytics(a=>{
-      const qc=[...a.quizCorrect],qt=[...a.quizTotal];
-      qc[mid]=correct; qt[mid]=total;
+      const qc=[...a.quizCorrect],qt=[...a.quizTotal],qa=[...(a.quizAnswered||Array(TOTAL).fill(0))];
+      qc[mid]=correct; qt[mid]=totalQs; qa[mid]=answered;
       const wt={...a.wrongTopics}; wt[mid]=wrongQs||[];
-      return {...a,quizCorrect:qc,quizTotal:qt,wrongTopics:wt};
+      return {...a,quizCorrect:qc,quizTotal:qt,quizAnswered:qa,wrongTopics:wt};
     });
   };
 
@@ -1088,7 +1098,7 @@ function App() {
         texts=[t.mres_title,t.mres_desc];
       } else if(module===IDX_ANA){
         const tc=analytics.quizCorrect.reduce((a,b)=>a+b,0);
-        const ta=analytics.quizTotal.reduce((a,b)=>a+b,0);
+        const ta=(analytics.quizAnswered||[]).reduce((a,b)=>a+b,0);
         const oa=ta>0?Math.round(tc/ta*100):0;
         texts=[t.analytics_title,t.analytics_desc,`${t.analytics_overall_acc}: ${oa}%`];
       }
@@ -1116,10 +1126,10 @@ function App() {
     if(!group||!dept||!id||!nameEn||!nameZh){ alert(t.analytics_fill_required); return; }
     const dateStr=new Date().toISOString().split('T')[0].replace(/-/g,'');
     const fileName=`${t.brand} ${t.title}_${nameEn}_${nameZh}_${dateStr}.csv`;
-    const headers=['Module','Time(s)','Clicks','Quiz Correct','Quiz Total','Cards Read','Cards Total','Wrong Questions'];
+    const headers=['Module','Time(s)','Clicks','Quiz Correct','Quiz Answered','Quiz Total','Cards Read','Cards Total','Wrong Questions'];
     const rows=modulesList.map(m=>{
       const i=m.id;
-      return [m.nav,analytics.time[i]||0,analytics.clicks[i]||0,analytics.quizCorrect[i]||0,analytics.quizTotal[i]||0,analytics.cardsRead[i]||0,analytics.cardsTotal[i]||0,(analytics.wrongTopics[i]||[]).join(' | ')].join(',');
+      return [m.nav,analytics.time[i]||0,analytics.clicks[i]||0,analytics.quizCorrect[i]||0,analytics.quizAnswered?.[i]||0,analytics.quizTotal[i]||0,analytics.cardsRead[i]||0,analytics.cardsTotal[i]||0,(analytics.wrongTopics[i]||[]).join(' | ')].join(',');
     });
     const meta=`Group,${group}\nDept,${dept}\nStudent ID,${id}\nEnglish Name,${nameEn}\nChinese Name,${nameZh}`;
     const csv='\uFEFF'+meta+'\n\n'+headers.join(',')+'\n'+rows.join('\n');
@@ -1377,7 +1387,7 @@ const MAna = ({t,analytics,setAnalytics,modulesList,studentInfo,setStudentInfo,o
   },[]);
 
   const tc=analytics.quizCorrect.reduce((a,b)=>a+b,0);
-  const ta=analytics.quizTotal.reduce((a,b)=>a+b,0);
+  const ta=(analytics.quizAnswered||[]).reduce((a,b)=>a+b,0);
   const oa=ta>0?Math.round(tc/ta*100):0;
   const totalTime=analytics.time.reduce((a,b)=>a+b,0);
   const totalClicks=analytics.clicks.reduce((a,b)=>a+b,0);
@@ -1388,13 +1398,17 @@ const MAna = ({t,analytics,setAnalytics,modulesList,studentInfo,setStudentInfo,o
   const sanitizeId=(v)=>v.replace(/[^0-9]/g,'').slice(0,12);
   const sanitizeName=(v)=>v.replace(/[<>"'&\\]/g,'').slice(0,50);
 
-  const weakModules=modulesList.filter(m=>m.id>=1&&m.id<=NUM_LEARN&&analytics.quizTotal[m.id]>0&&Math.round(analytics.quizCorrect[m.id]/analytics.quizTotal[m.id]*100)<75)
-    .map(m=>({name:m.nav,acc:Math.round(analytics.quizCorrect[m.id]/analytics.quizTotal[m.id]*100),id:m.id}))
-    .sort((a,b)=>a.acc-b.acc);
+  const weakModules=modulesList.filter(m=>{
+    const answered=(analytics.quizAnswered?.[m.id]||0);
+    return m.id>=1&&m.id<=NUM_LEARN&&answered>0&&Math.round(analytics.quizCorrect[m.id]/answered*100)<75;
+  }).map(m=>{
+    const answered=(analytics.quizAnswered?.[m.id]||0);
+    return {name:m.nav,acc:Math.round(analytics.quizCorrect[m.id]/answered*100),id:m.id};
+  }).sort((a,b)=>a.acc-b.acc);
 
   const handleClear=()=>{
     if(confirm(t.analytics_wp_clear_confirm)){
-      const fresh={time:Array(TOTAL).fill(0),clicks:Array(TOTAL).fill(0),quizCorrect:Array(TOTAL).fill(0),quizTotal:Array(TOTAL).fill(0),cardsRead:Array(TOTAL).fill(0),cardsTotal:Array(TOTAL).fill(0),wrongTopics:{},visited:Array(TOTAL).fill(false)};
+      const fresh={time:Array(TOTAL).fill(0),clicks:Array(TOTAL).fill(0),quizCorrect:Array(TOTAL).fill(0),quizTotal:Array(TOTAL).fill(0),quizAnswered:Array(TOTAL).fill(0),cardsRead:Array(TOTAL).fill(0),cardsTotal:Array(TOTAL).fill(0),wrongTopics:{},visited:Array(TOTAL).fill(false)};
       setAnalytics(fresh);
       try{localStorage.removeItem('TU_SPA_analytics');}catch{}
     }
@@ -1431,8 +1445,8 @@ const MAna = ({t,analytics,setAnalytics,modulesList,studentInfo,setStudentInfo,o
               const t_sec=analytics.time[m.id]||0;
               const pct=Math.round(t_sec/maxTime*100);
               const hasQuiz=m.id>=1&&m.id<=NUM_LEARN;
-              const qDone=hasQuiz&&analytics.quizTotal[m.id]>0;
-              const acc=qDone?Math.round(analytics.quizCorrect[m.id]/analytics.quizTotal[m.id]*100):null;
+              const qDone=hasQuiz&&(analytics.quizAnswered?.[m.id]||0)>0;
+              const acc=qDone?Math.round(analytics.quizCorrect[m.id]/(analytics.quizAnswered?.[m.id]||1)*100):null;
               return (
                 <button key={m.id} onClick={()=>goModule(m.id)} className="w-full flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg p-2 transition-colors">
                   <span className="text-base">{m.icon}</span>
@@ -1489,7 +1503,7 @@ const MAna = ({t,analytics,setAnalytics,modulesList,studentInfo,setStudentInfo,o
                 <td className="py-2 px-2 font-medium text-slate-700 dark:text-slate-300">{m.nav}</td>
                 <td className="py-2 px-2 text-slate-500">{analytics.time[m.id]||0}s</td>
                 <td className="py-2 px-2 text-slate-500">{analytics.clicks[m.id]||0}</td>
-                <td className="py-2 px-2 text-slate-500">{analytics.quizTotal[m.id]>0?`${analytics.quizCorrect[m.id]}/${analytics.quizTotal[m.id]}`:t.analytics_no_data}</td>
+                <td className="py-2 px-2 text-slate-500">{analytics.quizTotal[m.id]>0?`${analytics.quizCorrect[m.id]}/${analytics.quizAnswered?.[m.id]||analytics.quizCorrect[m.id]}/${analytics.quizTotal[m.id]}`:t.analytics_no_data}</td>
                 <td className="py-2 px-2 text-slate-500">{analytics.cardsTotal[m.id]>0?`${analytics.cardsRead[m.id]}/${analytics.cardsTotal[m.id]}`:'-'}</td>
               </tr>
             ))}
